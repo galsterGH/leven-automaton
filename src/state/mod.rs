@@ -1,14 +1,19 @@
-
+/// Represents a state in the Levenshtein automaton.
+/// Each state holds a vector of edit distances between prefixes of the pattern
+/// and the input consumed so far. Values are clamped to `diffs_allowed + 1`.
 #[derive(Clone)]
 pub struct State {
     edit_distance: Vec<usize>,
     diffs_allowed : usize,
 }
 
+/// A unique identifier for a State, computed by encoding the edit distance vector
+/// as a single integer in base `diffs_allowed + 2`.
 #[derive(PartialEq,Eq,Hash,Clone,Copy)]
 pub struct StateId(pub usize);
 
 impl State {
+    /// Creates a new state with all edit distances initialized to zero.
     pub fn new(pattern_size: usize, diffs_allowed : usize) -> Self {
         State {
 
@@ -17,6 +22,9 @@ impl State {
         }
     }
 
+    /// Creates the initial state of the automaton (before any input is consumed).
+    /// edit_distance[i] = min(i, diffs_allowed + 1), representing the cost of
+    /// deleting the first i characters of the pattern.
     pub fn initial_state(pattern_size: usize, diffs_allowed : usize) -> Self {
         State {
             edit_distance: (0..=pattern_size)
@@ -26,6 +34,9 @@ impl State {
         }
     }
 
+    /// Encodes this state's edit distance vector as a unique integer ID.
+    /// Uses base `diffs_allowed + 2` since each position holds values in [0, diffs_allowed + 1].
+    /// Returns None if the computation would overflow usize.
     pub fn get_state_id(&self)-> Option<StateId>{
         let result = (0..self.edit_distance.len()).zip(self.edit_distance.iter()).fold(Some(0 as usize), |acc, (i,n)|{
             if let None = acc{
@@ -33,7 +44,7 @@ impl State {
             }else {
                 let a: usize = acc?;
 
-                (self.diffs_allowed + 2).checked_pow(i as u32).and_then(|pow|{               
+                (self.diffs_allowed + 2).checked_pow(i as u32).and_then(|pow|{
                     let temp_mlt : usize;
 
                     if usize::MAX / pow > *n {
@@ -56,6 +67,11 @@ impl State {
         })
     }
 
+    /// Computes the next state after consuming `new_char` from the input.
+    /// Applies the Levenshtein recurrence considering all three edit operations:
+    /// - Match/substitution: comparing new_char against each pattern character
+    /// - Insertion: cost from new_state[i] (inserting new_char)
+    /// - Deletion: cost from self.edit_distance[i + 1] (skipping a pattern character)
     pub fn on_new_char(&self, pattern: &str, new_char: char) -> Self {
         let mut new_state = vec!(0;pattern.chars().count() + 1);
 
@@ -79,6 +95,8 @@ impl State {
         State { edit_distance: new_state, diffs_allowed: self.diffs_allowed}
     }
 
+    /// Returns true if this state represents a successful match, i.e., the edit distance
+    /// for the full pattern is within the allowed threshold.
     pub fn is_accepting(&self)->bool{
         return self.edit_distance[self.edit_distance.len() - 1] <= self.diffs_allowed
     }

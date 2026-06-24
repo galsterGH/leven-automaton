@@ -4,16 +4,26 @@ use crate::state::State;
 use std::collections::HashMap;
 use std::collections::VecDeque;
 
+/// A Levenshtein automaton that pre-computes a DFA for fuzzy string matching.
+/// Given a pattern and a maximum edit distance, it builds all reachable states
+/// and transitions at construction time, allowing O(n) matching per word.
 pub struct LevenshteinAutomaton
 {
+    /// The pattern string to match against.
     pattern : String,
+    /// The set of characters the automaton recognizes.
     alphabet : Vec<char>,
+    /// The ID of the initial state (before any input is consumed).
     init_state: StateId,
+    /// Maps each StateId to its corresponding State for acceptance checks.
     state_id_to_state : HashMap<StateId,State>,
+    /// The transition table: for each state and character, the next state.
     transitions: HashMap<StateId,HashMap<char,StateId>>,
 }
 
 impl LevenshteinAutomaton {
+    /// Constructs a new Levenshtein automaton for the given pattern.
+    /// Returns None if the state space overflows (very long patterns with large edit distances).
     pub fn new(pattern : &str, diffs_allowed : usize, alphabet : Vec<char>)->Option<Self>{
         let mut automaton = LevenshteinAutomaton {
             pattern: pattern.to_string(),
@@ -26,20 +36,20 @@ impl LevenshteinAutomaton {
         return automaton.create_automaton(diffs_allowed).and_then(|_|Some(automaton));
     }
 
+    /// Returns true if the Levenshtein distance between `against` and the pattern
+    /// is at most the allowed threshold. Returns false if any transition is missing
+    /// (e.g., a character not in the alphabet).
     pub fn match_word(&self, against : &str)-> bool{
         self.match_word_internal(against).unwrap_or(false)
     }
 
+    /// Internal matching logic that returns Option to leverage the ? operator.
+    /// Walks the DFA by consuming each character of the input word, then checks
+    /// whether the final state is accepting.
     fn match_word_internal(&self, against: &str)->Option<bool> {
-        // get the start state
-        // if it is accepting return true
-        // for each char in str (in order) do:
-        //    get the next state from that char
-        //   if it is accepting return true
-        //return false
         let mut start_state_id = self.init_state;
         for c in against.chars() {
-            let next_state_id = 
+            let next_state_id =
                 self.transitions.get(&start_state_id).
                 and_then(|inner_hash_map|{
                     inner_hash_map.get(&c)
@@ -49,15 +59,18 @@ impl LevenshteinAutomaton {
         }
 
         self.state_id_to_state.get(&start_state_id).and_then(|state| Some(state.is_accepting()))
-    }   
+    }
 
+    /// Builds the automaton via BFS over the state space.
+    /// Starting from the initial state, it computes transitions for every character
+    /// in the alphabet, discovers new states, and continues until all reachable
+    /// states have been explored.
     fn create_automaton(& mut self, diffs_allowed: usize)->Option<bool>{
         let mut queue : VecDeque<StateId> = VecDeque::new();
 
         let init_state = State::initial_state(self.pattern.chars().count(), diffs_allowed);
         let init_state_id = init_state.get_state_id()?;
 
-        //set the init state
         self.init_state = init_state_id;
 
         self.state_id_to_state.insert(init_state_id,init_state);
@@ -69,9 +82,9 @@ impl LevenshteinAutomaton {
             let popped_state = self.state_id_to_state.get(&state_id).cloned()?;
 
             for c in &self.alphabet{
-                let new_state = popped_state.on_new_char(&self.pattern, *c);                
+                let new_state = popped_state.on_new_char(&self.pattern, *c);
                 let new_state_id =  new_state.get_state_id()?;
-                                
+
                 self.transitions.entry(state_id)
                 .or_insert_with(HashMap::new)
                 .insert(*c,new_state_id);
