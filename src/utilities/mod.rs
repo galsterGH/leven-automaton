@@ -1,6 +1,9 @@
 
 use std::{collections::HashMap};
 
+/// A node in a Trie (prefix tree) data structure.
+/// Each node holds a map of children keyed by character, and optionally stores
+/// the full word if this node represents the end of an inserted word.
 #[derive(Clone)]
 pub struct TrieNode{
     nodes: HashMap<char,TrieNode>,
@@ -8,6 +11,7 @@ pub struct TrieNode{
 }
 
 impl TrieNode {
+    /// Creates a new empty trie node with no children and no word.
     pub fn new() -> Self{
         TrieNode {
             nodes : HashMap::new(),
@@ -15,6 +19,8 @@ impl TrieNode {
         }
     }
 
+    /// Inserts a word into the trie, creating intermediate nodes as needed.
+    /// Returns true upon successful insertion.
     pub fn add_new_word(& mut self, word : &str) -> bool {
         let mut curr_node = self;
         
@@ -27,10 +33,29 @@ impl TrieNode {
         true 
      }
 
-     pub fn does_word_exist(&self, word : &str)-> bool{
+    /// Returns true if the exact word exists in the trie.
+    pub fn does_word_exist(&self, word : &str)-> bool{
         self.does_word_exist_internal(word).unwrap_or(false)
      }
 
+    /// Returns a reference to the child node for the given character, or None if no such child exists.
+    pub fn get_next_node(&self, c : char) -> Option<&TrieNode>{
+        self.nodes.get(&c)
+    }
+
+    /// Returns a clone of the word stored at this node, or None if this node is not a word endpoint.
+    pub fn get_node_word(&self)->Option<String> {
+        self.word.to_owned()
+    }
+
+    /// Returns an iterator over all child entries (character, child node) of this node.
+    pub fn get_all_children(&self) -> impl Iterator<Item=(&char,&TrieNode)>{
+        self.nodes.iter()
+    }
+
+    /// Traverses the trie following each character of `word`, returning Some(true) if the
+    /// word is found, Some(false) if the path exists but no word is stored, or None if a
+    /// character has no matching child.
     fn does_word_exist_internal(&self, word : &str)-> Option<bool> {
         let mut node = self;
         
@@ -39,10 +64,6 @@ impl TrieNode {
         }
 
         node.word.as_ref().map(|s| *s == word)
-    }
-
-    pub fn get_next_node(&self, c : char) -> Option<&TrieNode>{
-        self.nodes.get(&c)
     }
     
 }

@@ -101,6 +101,8 @@ impl State {
         return self.edit_distance[self.edit_distance.len() - 1] <= self.diffs_allowed
     }
 
+    /// Returns true if all edit distances exceed the allowed threshold,
+    /// meaning no future input can lead to a match from this state.
     pub fn is_dead_state(&self)->bool {
         self.edit_distance.iter()
             .fold(true, |acc: bool,val| acc && (*val >= self.diffs_allowed + 1))

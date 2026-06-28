@@ -22,6 +22,8 @@ pub struct LevenshteinAutomaton
     transitions: HashMap<StateId,HashMap<char,StateId>>,    
     /// a set of dead states by their ids - a dead state is a state that you can't transition out of.
     dead_states : HashSet<StateId>,
+    /// accepting states
+    accepting_states: HashSet<StateId>,
 }
 
 impl LevenshteinAutomaton {
@@ -35,9 +37,30 @@ impl LevenshteinAutomaton {
             state_id_to_state : HashMap::new(),
             transitions: HashMap::new(),
             dead_states: HashSet::new(),
+            accepting_states : HashSet::new(),
         };
 
         return automaton.create_automaton(diffs_allowed).and_then(|_|Some(automaton));
+    }
+
+    /// Returns the initial state ID of the automaton.
+    pub fn get_initial_state(&self)->StateId{
+        self.init_state
+    }
+
+    /// Returns the next state after transitioning on the given character, or None if no transition exists.
+    pub fn get_next_state(&self,state_id: StateId, chr : char)-> Option<StateId>{
+        self.transitions.get(&state_id).and_then(|hm| hm.get(&chr).copied())
+    }
+
+    /// Returns true if the given state is an accepting state.
+    pub fn is_accepting_state(&self, state_id : StateId)->bool{
+        self.accepting_states.contains(&state_id)
+    }
+
+    /// Returns true if the given state is a dead state (no possible path to acceptance).
+    pub fn is_dead_state(&self, state_id : StateId)->bool{
+        self.dead_states.contains(&state_id)
     }
 
     /// Returns true if the Levenshtein distance between `against` and the pattern
@@ -79,6 +102,10 @@ impl LevenshteinAutomaton {
             self.dead_states.insert(init_state_id);
         }
 
+        if init_state.is_accepting(){
+            self.accepting_states.insert(init_state_id);
+        }
+
         self.init_state = init_state_id;
         self.state_id_to_state.insert(init_state_id,init_state);
         
@@ -104,6 +131,11 @@ impl LevenshteinAutomaton {
                     if new_state.is_dead_state() {
                         self.dead_states.insert(*new_state_id);
                     } else {
+                         
+                         if new_state.is_accepting() {
+                            self.accepting_states.insert(*new_state_id);
+                         }
+
                          queue.push_back(*new_state_id);
                     }
                 }else {
@@ -113,7 +145,6 @@ impl LevenshteinAutomaton {
         }
 
         Some(true)
-
     }
 
 }
