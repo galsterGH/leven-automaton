@@ -1,4 +1,4 @@
-# Levenshtein-automaton
+# Levenshtein Automaton
 
 A Levenshtein automaton implementation in Rust. Given a pattern string and a maximum edit distance, it pre-computes a deterministic finite automaton (DFA) that can efficiently test whether any input word is within the allowed Levenshtein distance from the pattern.
 
@@ -15,7 +15,7 @@ The automaton is built once for a given pattern and distance threshold, then can
 ## Single Word Usage
 
 ```rust
-use leven_automaton::automaton::LevenshteinAutomaton;
+use levenshtein_automaton::automaton::LevenshteinAutomaton;
 
 fn main() {
     let alphabet: Vec<char> = ('a'..='z').collect();
@@ -35,7 +35,7 @@ fn main() {
 The `Matcher` combines the automaton with a Trie to efficiently search an entire dictionary for all words within a given edit distance:
 
 ```rust
-use leven_automaton::matcher::Matcher;
+use levenshtein_automaton::matcher::Matcher;
 
 fn main() {
     let dictionary = vec![
